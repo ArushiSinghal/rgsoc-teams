@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class ProjectMailer < ActionMailer::Base
   default from: ENV['EMAIL_FROM'] || 'contact@rgsoc.org'
   default_url_options[:protocol] = 'https'
@@ -11,9 +12,9 @@ class ProjectMailer < ActionMailer::Base
 
   def comment(project, comment)
     subject = "[RGSoC] New comment: Project '#{project.name}'"
-    @project, @comment = project, comment
+    @project = project
+    @comment = comment
     rcpts = (project.subscribers - [comment.user]).map(&:email)
     mail subject: subject, to: rcpts
   end
-
 end

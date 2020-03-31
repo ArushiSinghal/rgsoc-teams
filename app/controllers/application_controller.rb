@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class ApplicationController < ActionController::Base
   protect_from_forgery with: :exception
   after_action :store_location
@@ -11,29 +12,14 @@ class ApplicationController < ActionController::Base
     session[:redirect_to] = redirect_to if redirect_to.present?
   end
 
-  # workaround fix for cancan on rails4 - https://github.com/ryanb/cancan/issues/835
-  before_action do
-    resource = controller_path.singularize.gsub('/', '_').to_sym
-    method = "#{resource}_params"
-    params[resource] &&= send(method) if respond_to?(method, true)
-  end
-
   before_action :set_timezone
 
   # Allow users to impersonate other uses in a non-production environment.
   # See the `pretender` gem.
   impersonates :user
 
-  def after_sign_in_path_for(user)
-    if user.just_created?
-      request.env['omniauth.origin'] || edit_user_path(user, welcome: true)
-    else
-      request.env['omniauth.origin'] || session.delete(:previous_url_login_required) || session.delete(:previous_url) || user_path(current_user)
-    end
-  end
-
   rescue_from CanCan::AccessDenied do |exception|
-    redirect_to root_url, alert: exception.message
+    redirect_back(fallback_location: root_path, alert: exception.message)
   end
 
   def cors_preflight
@@ -62,7 +48,7 @@ class ApplicationController < ActionController::Base
   end
 
   def require_role(role_name)
-    redirect_to '/', alert: "#{role_name.capitalize} required" unless current_user && current_user.roles.includes?(role_name)
+    redirect_to '/', alert: "#{role_name.capitalize} required" unless current_user&.roles&.includes?(role_name)
   end
 
   def login_required

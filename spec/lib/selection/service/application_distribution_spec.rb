@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 require 'selection/service/application_distribution'
 
 RSpec.describe Selection::Service::ApplicationDistribution do
@@ -16,7 +16,7 @@ RSpec.describe Selection::Service::ApplicationDistribution do
       Selection::Service::ApplicationDistribution.new(application: application).distribute
     end
 
-    first_distribution = Todo.all.map {|t| [t.user_id, t.application_id] }.flatten
+    first_distribution = Todo.all.map { |t| [t.user_id, t.application_id] }.flatten
 
     Todo.destroy_all
 
@@ -24,7 +24,7 @@ RSpec.describe Selection::Service::ApplicationDistribution do
       Selection::Service::ApplicationDistribution.new(application: application).distribute
     end
 
-    second_distribution = Todo.all.map {|t| [t.user_id, t.application_id] }.flatten
+    second_distribution = Todo.all.map { |t| [t.user_id, t.application_id] }.flatten
 
     expect(first_distribution).not_to eq(second_distribution)
   end

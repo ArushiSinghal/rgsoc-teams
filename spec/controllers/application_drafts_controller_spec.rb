@@ -149,7 +149,6 @@ RSpec.describe ApplicationDraftsController, type: :controller do
       it_behaves_like 'application period is over' do
         subject { post :create }
       end
-
     end
 
     describe 'PATCH update' do
@@ -218,13 +217,15 @@ RSpec.describe ApplicationDraftsController, type: :controller do
 
     describe 'PUT apply' do
       let(:team)  { create(:team, :applying_team, :in_current_season) }
-      let(:draft) { create(:application_draft, :appliable, team: team) }
+      let!(:draft) { create(:application_draft, :appliable, team: team) }
       let(:application) { Application.last }
 
       context 'as a student' do
         let(:user) { team.students.first }
 
         context 'coaches confirmed' do
+          before { clear_enqueued_jobs }
+
           it 'creates a new application' do
             expect { put :apply, { params: { id: draft.id } } }.to change { Application.count }.by(1)
             expect(flash[:notice]).to be_present
@@ -232,9 +233,9 @@ RSpec.describe ApplicationDraftsController, type: :controller do
             expect(application.application_draft).to eql draft
           end
 
-          it 'sends 3 mails (1 to orga and 1 to each student)' do
+          it 'sends 1 mail to orga' do
             expect { put :apply, { params: { id: draft.id } } }.to \
-              change { enqueued_jobs.size }.by(3)
+              change { enqueued_jobs.size }.by(1)
           end
 
           it 'flags the draft as applied' do
@@ -273,6 +274,5 @@ RSpec.describe ApplicationDraftsController, type: :controller do
       it_behaves_like 'fails to apply for role', :coach,  redirection_to: '/'
       it_behaves_like 'fails to apply for role', :mentor, redirection_to: '/'
     end
-
   end
 end

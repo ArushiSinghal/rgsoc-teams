@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Students::StatusUpdatesController, type: :controller do
   render_views
@@ -116,7 +116,5 @@ RSpec.describe Students::StatusUpdatesController, type: :controller do
         expect(response).to redirect_to [:students, :status_updates]
       end
     end
-
   end
-
 end

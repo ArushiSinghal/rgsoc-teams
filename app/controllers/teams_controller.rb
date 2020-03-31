@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class TeamsController < ApplicationController
   before_action :set_team,  only: [:show, :edit, :update, :destroy]
   before_action :set_users, only: [:new, :edit]
@@ -87,7 +88,6 @@ class TeamsController < ApplicationController
       :name, :twitter_handle, :github_handle, :description, :post_info, :event_id,
       :checked, :'starts_on(1i)', :'starts_on(2i)', :'starts_on(3i)',
       :'finishes_on(1i)', :'finishes_on(2i)', :'finishes_on(3i)', :invisible,
-      :project_name,
       roles_attributes: role_attributes_list,
       conference_preference_attributes: [:id, :terms_of_ticket, :terms_of_travel, :first_conference_id, :second_conference_id, :lightning_talk, :comment, :_destroy],
       sources_attributes: [:id, :kind, :url, :_destroy]
@@ -99,12 +99,12 @@ class TeamsController < ApplicationController
   end
 
   def role_attributes_list
-    unless current_user.admin? ||
+    if current_user.admin? ||
       # If it contains an ID, the user is updating an existing role
-      params.fetch(:roles_attributes, {}).to_unsafe_h.none? { |_, attributes| attributes.has_key? 'id' }
-      [:id, :github_handle, :_destroy] # do not allow to update the actual role
-    else
+      params.fetch(:roles_attributes, {}).to_unsafe_h.none? { |_, attributes| attributes.key? 'id' }
       [:id, :name, :github_handle, :_destroy]
+    else
+      [:id, :github_handle, :_destroy] # do not allow to update the actual role
     end
   end
 

@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Organizers::ConferencesController, type: :controller do
   render_views
@@ -11,13 +11,12 @@ RSpec.describe Organizers::ConferencesController, type: :controller do
     describe 'GET index' do
       it 'renders the index template' do
         get :index
-        expect(response).to be_success
+        expect(response).to have_http_status(:success)
         expect(response).to render_template 'index'
       end
     end
 
     describe 'POST import' do
-
       let(:file) { fixture_file_upload("spec/fixtures/files/test.csv", 'text/csv') }
 
       it 'posts a .csv file' do
@@ -27,8 +26,8 @@ RSpec.describe Organizers::ConferencesController, type: :controller do
       end
 
       it 'refuses other formats' do
-        post :import, format: :json, params: { file: file}
-        expect(response).not_to be_success
+        post :import, format: :json, params: { file: file }
+        expect(response).not_to have_http_status(:success)
       end
 
       it 'catches error when file is omitted' do
@@ -43,7 +42,7 @@ RSpec.describe Organizers::ConferencesController, type: :controller do
 
       it 'destroys the resource' do
         expect {
-          delete :destroy, params: {id: conference}
+          delete :destroy, params: { id: conference }
         }.to change { Conference.count }.by(-1)
         expect(response).to redirect_to organizers_conferences_path
       end

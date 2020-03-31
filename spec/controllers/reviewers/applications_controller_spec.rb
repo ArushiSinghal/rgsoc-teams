@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Reviewers::ApplicationsController, type: :controller do
   render_views
@@ -29,6 +29,26 @@ RSpec.describe Reviewers::ApplicationsController, type: :controller do
 
         expect(assigns :table).to be_a Selection::Table
         expect(response).to render_template :index
+      end
+
+      context 'given one of the users deleted their account' do
+        before do
+          application = applications.first
+          create(:student, team: application.team)
+          create(:student, team: application.team)
+          application.team.students.first.destroy!
+        end
+
+        it 'assigns an application table and renders the index view' do
+          expect(Application).to receive(:rateable)
+            .with(no_args)
+            .and_return(applications)
+
+          get :index
+
+          expect(assigns :table).to be_a Selection::Table
+          expect(response).to render_template :index
+        end
       end
 
       context 'when applying filters and sorting' do
@@ -88,6 +108,17 @@ RSpec.describe Reviewers::ApplicationsController, type: :controller do
     context 'when reviewer' do
       let(:user) { create :reviewer }
       before { sign_in user }
+
+      context 'given the application has mentor comments' do
+        let(:mentor) { create :mentor }
+        let!(:mentor_comment) { Mentor::Comment.create(user: user, commentable_id: application.id, text: 'This is good stuff!') }
+
+        before { get :show, params: { id: application } }
+
+        it 'shows mentor comment' do
+          expect(response.body).to match('This is good stuff!')
+        end
+      end
 
       context 'when application not yet rated by user' do
         before { get :show, params: { id: application } }
@@ -171,7 +202,7 @@ RSpec.describe Reviewers::ApplicationsController, type: :controller do
       before { sign_in user }
 
       context 'with valid params' do
-        let(:params) { {id: application, application: {less_than_two_coaches: 1}} }
+        let(:params) { { id: application, application: { less_than_two_coaches: 1 } } }
 
         it 'assigns @application' do
           put :update, params: params
@@ -179,10 +210,10 @@ RSpec.describe Reviewers::ApplicationsController, type: :controller do
         end
 
         it 'changes application record' do
-          expect{
+          expect {
             put :update, params: params
             application.reload
-          }.to change{application.less_than_two_coaches}.to true
+          }.to change { application.less_than_two_coaches }.to true
         end
 
         it 'redirects to application' do

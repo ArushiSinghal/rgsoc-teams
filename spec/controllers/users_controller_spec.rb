@@ -28,7 +28,7 @@ RSpec.describe UsersController, type: :controller do
         # attendences used to stick around when their conference was deleted
         it 'will not list conferences preferences w/o conference' do
           get :show, params: { id: user.to_param }
-          expect(response).to be_success
+          expect(response).to have_http_status(:success)
           expect(response.body).not_to match conference.name
         end
       end
@@ -85,20 +85,64 @@ RSpec.describe UsersController, type: :controller do
 
     context "its own profile" do
       describe "with valid params" do
+        context "communication opt-in" do
+          let(:now) { Time.new(2002, 10, 31) }
+          before { Timecop.freeze(now) }
+
+          after { Timecop.return }
+
+          shared_examples_for 'tracks opt-in time' do |attribute|
+            it "sets #{attribute} to the current time" do
+              put :update, params: { id: user.to_param, user: { attribute => '1' } }
+              expect(user.reload.public_send "#{attribute}_at").to eq(now)
+            end
+          end
+
+          it_behaves_like 'tracks opt-in time', :opted_in_newsletter
+          it_behaves_like 'tracks opt-in time', :opted_in_announcements
+          it_behaves_like 'tracks opt-in time', :opted_in_marketing_announcements
+          it_behaves_like 'tracks opt-in time', :opted_in_surveys
+          it_behaves_like 'tracks opt-in time', :opted_in_sponsorships
+          it_behaves_like 'tracks opt-in time', :opted_in_applications_open
+
+          context 'opting out' do
+            shared_examples_for 'tracks opt-out' do |attribute|
+              before do
+                user.update_attribute attribute, Time.new(2002, 10, 31)
+              end
+
+              it "sets #{attribute} to nil" do
+                put :update, params: { id: user.to_param, user: { attribute => '0' } }
+                expect(user.reload.public_send "#{attribute}_at").to eq(nil)
+              end
+            end
+
+            it_behaves_like 'tracks opt-out', :opted_in_newsletter
+            it_behaves_like 'tracks opt-out', :opted_in_announcements
+            it_behaves_like 'tracks opt-out', :opted_in_marketing_announcements
+            it_behaves_like 'tracks opt-out', :opted_in_surveys
+            it_behaves_like 'tracks opt-out', :opted_in_sponsorships
+            it_behaves_like 'tracks opt-out', :opted_in_applications_open
+          end
+        end
 
         context "and unconfirmed user" do
           let(:user) { create(:user, confirmed_at: nil) }
 
+          before { clear_enqueued_jobs }
+
           it "sends an confirmation email if the user isn't confirmed yet and the email wasn't changed" do
             expect {
               put :update, params: { id: user.to_param, user: { name: 'Trung Le' } }
-            }.to change { ActionMailer::Base.deliveries.count }.by(1)
+            }.to have_enqueued_job.on_queue('mailers')
+            expect(enqueued_jobs.size).to eq 1
           end
 
           it "sends only one confirmation email if the user isn't confirmed yet and the email was changed" do
             expect {
               put :update, params: { id: user.to_param, user: { name: 'Trung Le', email: 'newmail@example.com' } }
-            }.to change { ActionMailer::Base.deliveries.count }.by(1)
+            }.to have_enqueued_job.on_queue('mailers')
+            expect(enqueued_jobs.size).to eq 1
           end
         end
 
@@ -149,7 +193,6 @@ RSpec.describe UsersController, type: :controller do
   end
 
   describe 'PATCH update' do
-
     let(:valid_attributes) { { application_about: "lorem ipsum" } }
 
     let(:user) { create(:user) }

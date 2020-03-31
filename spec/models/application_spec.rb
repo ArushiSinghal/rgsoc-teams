@@ -11,22 +11,20 @@ RSpec.describe Application, type: :model do
 
   describe 'associations' do
     it { is_expected.to belong_to(:team).inverse_of(:applications).counter_cache(true) }
-    it { is_expected.to belong_to(:project) }
-    it { is_expected.to belong_to(:application_draft) }
+    it { is_expected.to belong_to(:project).optional }
     it { is_expected.to belong_to(:application_draft) }
     it { is_expected.to have_many(:comments).dependent(:destroy).order(:created_at) }
   end
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:application_data) }
-    it { is_expected.to validate_presence_of(:team) }
   end
 
   describe 'scopes' do
     describe '.hidden' do
       it 'returns only hidden applications' do
         expect(described_class.hidden.where_clause.send(:predicates)).to eq(
-          ["applications.hidden IS NOT NULL and applications.hidden = 't'"]
+          ['applications.hidden IS NOT NULL and applications.hidden = TRUE']
         )
       end
     end
@@ -34,7 +32,7 @@ RSpec.describe Application, type: :model do
     describe '.visible' do
       it 'returns only visible applications' do
         expect(described_class.visible.where_clause.send(:predicates)).to eq(
-          ["applications.hidden IS NULL or applications.hidden = 'f'"]
+          ['applications.hidden IS NULL or applications.hidden = FALSE']
         )
       end
     end
@@ -53,7 +51,7 @@ RSpec.describe Application, type: :model do
   end
 
   describe 'flags' do
-    flags = described_class::FLAGS
+    flags = Selection::Table::FLAGS
 
     flags.each do |flag|
       it { is_expected.to respond_to("#{flag}?") }
@@ -74,6 +72,12 @@ RSpec.describe Application, type: :model do
       expect(subject.flags).to include(flag)
       subject.send(:"#{flag}=", '0')
       expect(subject.flags).not_to include(flag)
+    end
+
+    it 'ensures flags are unique' do
+      flag = flags.sample.to_s
+      subject.flags = [flag, flag]
+      expect { subject.validate }.to change(subject, :flags).from([flag, flag]).to([flag])
     end
   end
 

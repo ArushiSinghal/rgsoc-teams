@@ -1,17 +1,19 @@
 # frozen_string_literal: true
+
 require 'csv'
 
 module Reviewers
   class ApplicationsController < Reviewers::BaseController
     before_action :store_filters, only: :index
     before_action :persist_order, only: :index
+    helper_method :mentor_comments
     respond_to :html
 
     PATH_PARENTS = [:reviewers]
 
     def set_breadcrumbs
       super
-      @breadcrumbs << [ 'Applications', [:reviewers, :applications] ]
+      @breadcrumbs << ['Applications', [:reviewers, :applications]]
     end
 
     def index
@@ -59,13 +61,17 @@ module Reviewers
               :city,
               :country,
               :coaching_company,
-              Application::FLAGS)
+              Selection::Table::FLAGS)
     end
 
     def store_filters
       Selection::Table::FLAGS.each do |key|
         session[key] = params[:filter][key] == 'true' if params.dig(:filter, key)
       end
+    end
+
+    def mentor_comments
+      Mentor::Comment.where(commentable_id: @application.id).where('created_at >= ?', Date.parse('2018.02.28'))
     end
 
     def persist_order

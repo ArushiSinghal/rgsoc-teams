@@ -1,6 +1,5 @@
 language: ruby
 cache: bundler
-sudo: false
 dist: trusty
 bundler_args: "-j4 --without development production --quiet"
 notifications:
@@ -9,12 +8,19 @@ notifications:
   slack:
     secure: pEbxQLQakbPpZkU2p+FdHxSOw7BlXHrOMdJlh8g7fK2oGiOMrpU0wbRUHUxNWzxTnkqWmwq37cIFXPGLel3yWkDzDO0+EuBBFPyoiQ2THxC8/pdpIO3I6jAuH7Zqra4jIdfHWw0UkN4Z+Yqnc+Y90rf9SC7mRGucbcy5aCGEIkY=
 before_install:
+  - sudo apt-get update
+  - sudo apt-get install chromium-chromedriver
   - gem update --system
   - gem --version
+  - gem install bundler -v 1.17.3
 before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
   - cp config/database.yml.travis config/database.yml
   - bundle exec rails db:create db:schema:load RAILS_ENV=test
   - npm install -g jshint
+  - "export PATH=$PATH:/usr/lib/chromium-browser/"
 script:
   - bundle exec rubocop
   - jshint app/assets/javascripts
@@ -22,7 +28,7 @@ script:
 deploy:
   - provider: heroku
     api_key:
-      secure: ZtYE7hK2EyNWYhkxWSGSrmCNvYZrT7dmxRvi4rg82uHFOtzbEiThjkmwKKD3EK75syGFos3fJszW8GRwJqY9Id6L1Ieg+GpHDMBYJqsLbSRqJ6Mj1vzxbDqV2XsDFkr2e3MTrgNPRX+qmcKnsP9PTwxtey8pAUZFQFTz0i0gxcc=
+      secure: QGw8fTa9Gbf99f50M+E/7NMglqwoiE7WGObekUFH4ABsUzapGVHrU6WN4T4BKfRtjkZDpLgeEDtGeU2ZbLhOHMU53Z6iYTz24bvhA1VKKY8IEmiYWWTHPOFJAFaZL7GRToJxMNGofRfHagXPESZpFHGKFxdMNtgaxmTH/noy9K4=
     app: rgsoc-teams-staging
     run:
       - rails db:migrate
@@ -31,7 +37,7 @@ deploy:
       repo: rails-girls-summer-of-code/rgsoc-teams
   - provider: heroku
     api_key:
-      secure: ZtYE7hK2EyNWYhkxWSGSrmCNvYZrT7dmxRvi4rg82uHFOtzbEiThjkmwKKD3EK75syGFos3fJszW8GRwJqY9Id6L1Ieg+GpHDMBYJqsLbSRqJ6Mj1vzxbDqV2XsDFkr2e3MTrgNPRX+qmcKnsP9PTwxtey8pAUZFQFTz0i0gxcc=
+      secure: MUUTDu1EwDQiQwpL3gYnKO/ET4csokhsCFTSILpjxLzTLMm3XmCK90OZ2yoFULi+rk7nhWzCNE+Dr9ChXjUM8/BOczqkgms28n5XsTm/SAV6q2BDUR0YGm8myDyN1ts5vcqgCvyVLCkjMw/nnwRCzTMD7QUXQtyASJOr9WJvu1I=
     app: rgsoc-teams-production
     run:
       - rails db:migrate
@@ -40,7 +46,7 @@ deploy:
       repo: rails-girls-summer-of-code/rgsoc-teams
 addons:
   postgresql: '9.5'
-after_success:
-  - bundle exec codeclimate-test-reporter
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 branches:
   only: [master, staging]

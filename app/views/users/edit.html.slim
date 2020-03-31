@@ -1,8 +1,8 @@
 - if params[:welcome]
   h1 Welcome!
 
-  p Please complete your profile:
-
+  p Please <strong>check your email address</strong> and fill all required fields to complete signing up.
+    Not saving your profile may cause strange behaviour while using the app!
 - else
   nav.page
     .back-nav
@@ -24,7 +24,7 @@
 = simple_nested_form_for @user do |f|
   - if @user.errors.any?
     #error_explanation
-      h2 = "#{pluralize(@user.errors.count, "error")} prohibited this user from being saved:"
+      h2 = "#{pluralize(@user.errors.count, "error")} prohibits this user from being saved:"
       ul
         - @user.errors.full_messages.each do |message|
           li = message
@@ -34,13 +34,20 @@
 
   = f.input :name, wrapper_html: { class: 'col-md-6' }
   = f.input :email, required: true, wrapper_html: { class: 'col-md-6' }
+  - if current_user.unconfirmed_email
+    .help-block
+      p
+        ' Check your email on
+        = current_user.unconfirmed_email
+        '  to confirm your new email address. Until confirmed all messages will go to your current email address.
+
   = f.input :github_handle, required: false, disabled: true, wrapper_html: { class: 'col-md-6' }
   = f.input :twitter_handle, wrapper_html: { class: 'col-md-6' }
   = f.input :irc_handle, wrapper_html: { class: 'col-md-6' }
   = f.input :homepage, as: :url, wrapper_html: { class: 'col-md-6' }
   = f.input :country, required: true, as: :country, label: "Country", prompt: "Select your country", wrapper_html: { class: 'col-md-6' }
   = f.input :timezone, as: :select, collection: list_all_timezones, label: "Timezone", prompt: "Select your timezone", wrapper_html: { class: 'col-md-6' }
-  = f.input :location, wrapper_html: { class: 'col-md-6' }
+  = f.input :location, required: true, wrapper_html: { class: 'col-md-6' }
   div.clearfix
 
   = f.input :hide_email, label: 'Never show my email address',  hint: 'Only signed-in users will see your email address anyway. People will have trouble contacting you.'
@@ -50,6 +57,14 @@
   = f.input :company_name, label: 'Company name'
   = f.input :company_info, label: 'Company info', hint: 'Where is the office, how much space can you provide, etc.'
   = f.input :bio, label: 'About you', hint: 'You can use basic <a href="http://en.wikipedia.org/wiki/Markdown" target="_blank">Markdown</a> here.'.html_safe
+
+  h3.page-header Communication
+  .checkbox
+    = link_to 'http://eepurl.com/gJ7D4r', target: '_blank' do
+      | Sign up for our newsletter
+    p.help-block
+      | If you would like to receive important RGSoC announctsments and updates straight to your inbox, sign up to our newsletter. You'll get all the latest program info, inlcuding: opening of the OS project submission page, announcement of when student applications commence, crowdfunding campaign launch, and details of team selection, program kick-off and season wrap-up stages.
+
   h3.page-header I am interested in:
 
   = f.collection_check_boxes :interested_in, User::INTERESTS.to_a, :first, :last, item_wrapper_tag: 'div', item_wrapper_class: 'interested_in'

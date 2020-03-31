@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Mentor::Comment, type: :model do
   describe 'database' do
@@ -18,8 +18,8 @@ RSpec.describe Mentor::Comment, type: :model do
 
     it 'has a default scope to include only comments on Mentor::Applications' do
       create(:comment)
-      create(:team_comment)
-      create(:application_comment)
+      create(:comment, :for_team)
+      create(:comment, :for_application)
       comment = described_class.create
 
       expect(described_class.all).to contain_exactly comment
@@ -35,8 +35,8 @@ RSpec.describe Mentor::Comment, type: :model do
   end
 
   describe 'associations' do
-    it { is_expected.to belong_to :user }
-    it { is_expected.not_to belong_to :commentable }
+    it { is_expected.to belong_to(:user).optional }
+    it { is_expected.not_to belong_to(:commentable).optional }
   end
 
   describe 'attributes' do

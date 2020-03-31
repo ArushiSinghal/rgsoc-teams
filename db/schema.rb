@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20180201220221) do
-
+ActiveRecord::Schema.define(version: 20180714153306) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "hstore"
@@ -130,10 +129,8 @@ ActiveRecord::Schema.define(version: 20180201220221) do
     t.string "url", limit: 255
     t.date "starts_on"
     t.date "ends_on"
-    t.integer "tickets"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "lightningtalkslots"
     t.integer "season_id"
     t.string "gid"
     t.string "city"
@@ -155,6 +152,16 @@ ActiveRecord::Schema.define(version: 20180201220221) do
     t.datetime "updated_at", null: false
     t.integer "group", default: 0
     t.text "seasons", default: [], array: true
+  end
+
+  create_table "maintainerships", force: :cascade do |t|
+    t.integer "project_id"
+    t.integer "user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id", "user_id"], name: "index_maintainerships_on_project_id_and_user_id", unique: true
+    t.index ["project_id"], name: "index_maintainerships_on_project_id"
+    t.index ["user_id"], name: "index_maintainerships_on_user_id"
   end
 
   create_table "notes", id: :serial, force: :cascade do |t|
@@ -258,9 +265,9 @@ ActiveRecord::Schema.define(version: 20180201220221) do
     t.integer "season_id"
     t.boolean "invisible", default: false
     t.integer "applications_count", default: 0, null: false
-    t.string "project_name"
     t.bigint "project_id"
     t.index ["applications_count"], name: "index_teams_on_applications_count"
+    t.index ["kind"], name: "index_teams_on_kind"
     t.index ["project_id"], name: "index_teams_on_project_id"
     t.index ["season_id"], name: "index_teams_on_season_id"
   end
@@ -322,6 +329,12 @@ ActiveRecord::Schema.define(version: 20180201220221) do
     t.string "tshirt_cut"
     t.text "tech_expertise", default: [], array: true
     t.text "tech_interest", default: [], array: true
+    t.datetime "opted_in_newsletter_at"
+    t.datetime "opted_in_announcements_at"
+    t.datetime "opted_in_marketing_announcements_at"
+    t.datetime "opted_in_surveys_at"
+    t.datetime "opted_in_sponsorships_at"
+    t.datetime "opted_in_applications_open_at"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
   end
 

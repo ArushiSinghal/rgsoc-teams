@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Organizers
   class ConferencesController < Organizers::BaseController
     before_action :find_conference, only: [:show, :destroy]
@@ -56,7 +57,6 @@ module Organizers
         :name, :location, :city, :country, :region,
         :url, :twitter,
         :starts_on, :ends_on,
-        :lightningtalkslots, :tickets,
         :gid, # id in orga's Google Spreadsheet (format: 2017001)
         :notes,
         conference_preferences_attributes: [:id, :_destroy]
@@ -65,7 +65,7 @@ module Organizers
 
     def set_breadcrumbs
       super
-      @breadcrumbs << [ 'Conferences', :conferences]
+      @breadcrumbs << ['Conferences', :conferences]
     end
 
     def ensure_file_was_posted

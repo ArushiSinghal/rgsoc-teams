@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Mentors
   class ApplicationsController < Mentors::BaseController
     before_action :application, only: [:show, :signoff, :fav]
@@ -36,10 +37,11 @@ module Mentors
     private
 
     def projects
-      Project.
-        in_current_season.
-        accepted.
-        where(submitter: current_user)
+      @projects ||= Project
+        .in_current_season
+        .accepted
+        .joins(:maintainerships)
+        .where("maintainerships.user_id" => current_user.id)
     end
 
     def application

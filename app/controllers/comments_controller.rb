@@ -1,6 +1,6 @@
 # frozen_string_literal: true
-class CommentsController < ApplicationController
 
+class CommentsController < ApplicationController
   # This controller manages the comments on applications and projects.
   # Supervisor's comments on their teams are managed by the supervisors/comments-controller
   # We only allow comments with text (others do not make sense here)
@@ -11,7 +11,7 @@ class CommentsController < ApplicationController
   def create
     @comment = Comment.new(comment_params)
 
-    if (@comment.text.present? && @comment.save)
+    if @comment.text.present? && @comment.save
       anchor = ActionView::RecordIdentifier.dom_id(@comment)
     else
       flash[:alert] = "Oh no! We can't save your comment. Please try again?"
@@ -21,7 +21,7 @@ class CommentsController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to commentable_path(@comment.commentable, anchor || nil) }
-      format.js { }
+      format.js {}
     end
   end
 

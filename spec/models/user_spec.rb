@@ -5,41 +5,72 @@ RSpec.describe User, type: :model do
     stub_request(:get, /./).to_return(body: File.read('spec/stubs/github/user.json'))
   end
 
-  it { expect(subject).to have_many(:teams) }
-  it { expect(subject).to have_many(:application_drafts) }
-  it { expect(subject).to have_many(:roles) }
-  it { expect(subject).to have_many(:todos).dependent(:destroy) }
+  describe 'associations' do
+    it { is_expected.to have_many(:roles) }
+    it { is_expected.to have_many(:teams).through(:roles) }
+    it { is_expected.to have_many(:application_drafts).through(:teams) }
+    it { is_expected.to have_many(:applications).through(:teams) }
+    it { is_expected.to have_many(:todos).dependent(:destroy) }
+    it { is_expected.to have_many(:comments).dependent(:destroy) }
+  end
 
-  it { expect(subject).to validate_presence_of(:github_handle) }
-  it { is_expected.to validate_uniqueness_of(:github_handle).case_insensitive }
+  describe 'validations' do
+    it { expect(subject).to validate_presence_of(:github_handle) }
+    it { is_expected.to validate_uniqueness_of(:github_handle).case_insensitive }
 
-  it { expect(subject).to allow_value('http://example.com').for(:homepage) }
-  it { expect(subject).to allow_value('https://example.com').for(:homepage) }
-  it { expect(subject).to_not allow_value('example.com').for(:homepage) }
+    it { expect(subject).to allow_value('http://example.com').for(:homepage) }
+    it { expect(subject).to allow_value('https://example.com').for(:homepage) }
+    it { expect(subject).to_not allow_value('example.com').for(:homepage) }
 
-  it { expect(subject).to validate_presence_of(:name) }
-  it { expect(subject).to validate_presence_of(:email) }
-  it { expect(subject).to validate_presence_of(:country) }
-  it { expect(subject).to validate_presence_of(:location) }
+    it { expect(subject).to validate_presence_of(:name) }
+    it { expect(subject).to validate_presence_of(:email) }
+    it { expect(subject).to validate_presence_of(:country) }
+    it { expect(subject).to validate_presence_of(:location) }
 
-  context 'during github user import' do
-    before do
-      subject.github_import = true
-    end
-
-    it { expect(subject).not_to validate_presence_of(:name) }
-    it { expect(subject).not_to validate_presence_of(:email) }
-    it { expect(subject).not_to validate_presence_of(:country) }
-    it { expect(subject).not_to validate_presence_of(:location) }
-
-    it 'should not send a confirmation email' do
-      expect {
-        subject.github_handle = "example"
+    context 'during github user import' do
+      before do
         subject.github_import = true
-        subject.save!
-      }.not_to change { ActionMailer::Base.deliveries.count }
-      subject.reload
+      end
+
+      it { expect(subject).not_to validate_presence_of(:name) }
+      it { expect(subject).not_to validate_presence_of(:email) }
+      it { expect(subject).not_to validate_presence_of(:country) }
+      it { expect(subject).not_to validate_presence_of(:location) }
+
+      it 'should not send a confirmation email' do
+        expect {
+          subject.github_handle = "example"
+          subject.github_import = true
+          subject.save!
+        }.not_to change { ActionMailer::Base.deliveries.count }
+        subject.reload
+      end
     end
+  end
+
+  describe 'email preferences' do
+    let(:now) { Time.new(2002, 10, 31) }
+    let(:user) { build(:user, github_handle: 'github_handle') }
+    before { Timecop.freeze(now) }
+    after { Timecop.return }
+
+    shared_examples 'opting in and out' do |optin|
+      it 'sets the time opted in at' do
+        user.public_send("#{optin}=", true)
+        user.save!
+        expect(user.public_send("#{optin}_at")).to eq(now)
+        user.public_send("#{optin}=", false)
+        user.save!
+        expect(user.public_send("#{optin}_at")).not_to be_present
+      end
+    end
+
+    it_behaves_like 'opting in and out', :opted_in_newsletter
+    it_behaves_like 'opting in and out', :opted_in_announcements
+    it_behaves_like 'opting in and out', :opted_in_marketing_announcements
+    it_behaves_like 'opting in and out', :opted_in_surveys
+    it_behaves_like 'opting in and out', :opted_in_sponsorships
+    it_behaves_like 'opting in and out', :opted_in_applications_open
   end
 
   describe 'immutable github handle validation' do
@@ -196,22 +227,36 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe 'after_create' do
-    let(:user) { User.create(github_handle: 'octocat', confirmed_at: Date.yesterday, github_import: true) }
+  describe 'before_create' do
+    subject(:user) { described_class.create(attrs) }
 
-    it 'is just created' do
-      expect(user.just_created?).to eql true
+    let(:attrs)         { { github_handle: github_handle, confirmed_at: Date.yesterday, github_import: true } }
+    let(:github_handle) { 'octocat' }
+
+    it { is_expected.to be_just_created }
+
+    it 'completes attributes from Github and writes them to the DB' do
+      expect(user.reload).to have_attributes(
+        github_id: 1,
+        email:     'octocat@github.com',
+        name:      'monalisa octocat',
+        location:  'San Francisco'
+      )
     end
 
-    it 'completes attributes from Github' do
-      attrs = user.attributes.slice(*%w(github_id email location name))
-      expect(attrs.values).to be == [1, 'octocat@github.com', 'San Francisco', 'monalisa octocat']
-    end
+    context 'when the name cannot be retrieved from Github' do
+      let(:github_user) { instance_double(Github::User) }
+      let(:empty_attrs) { { name: '' } }
 
-    it 'sets the name to the github_handle if blank' do
-      allow_any_instance_of(Github::User).
-        to receive(:attrs).and_return({ name: '' })
-      expect(user.name).to eql user.github_handle
+      before do
+        allow(Github::User).to receive(:new).with(github_handle).and_return(github_user)
+        allow(github_user).to receive(:attrs).and_return(empty_attrs)
+      end
+
+      it 'sets the name to the github handle' do
+        expect(user.reload).to have_attributes(name: github_handle, github_handle: github_handle)
+        expect(github_user).to have_received(:attrs)
+      end
     end
   end
 
@@ -268,8 +313,8 @@ RSpec.describe User, type: :model do
       expect(student).not_to be_project_maintainer
     end
 
-    it 'returns true if user has submitted an accepted project' do
-      create(:project, :accepted, submitter: maintainer)
+    it 'returns true if user is maintaining an accepted project' do
+      create(:maintainership, project: create(:project, :accepted), user: maintainer)
       expect(maintainer).to be_project_maintainer
     end
 
@@ -346,7 +391,6 @@ RSpec.describe User, type: :model do
       @eesy = create(:user, name: "Eesy Peesy")
       @team = create(:team, name: "Cheesy")
       @cheesy = create(:student, team: @team)
-
     end
 
     it 'returns user with matching name' do

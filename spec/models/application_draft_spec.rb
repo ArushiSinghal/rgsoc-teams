@@ -1,13 +1,16 @@
 # frozen_string_literal: true
+
 require 'rails_helper'
 
 RSpec.describe ApplicationDraft, type: :model do
   it_behaves_like 'HasSeason'
 
   describe 'associations' do
-    it { is_expected.to belong_to(:updater).class_name('User') }
-    it { is_expected.to belong_to(:project1).class_name('Project') }
-    it { is_expected.to belong_to(:project2).class_name('Project') }
+    it { is_expected.to belong_to(:team) }
+    it { is_expected.to belong_to(:updater).class_name('User').optional }
+    it { is_expected.to belong_to(:project1).class_name('Project').optional }
+    it { is_expected.to belong_to(:project2).class_name('Project').optional }
+    it { is_expected.to have_one(:application) }
   end
 
   describe 'validations' do
@@ -231,7 +234,6 @@ RSpec.describe ApplicationDraft, type: :model do
     end
 
     Student::REQUIRED_DRAFT_FIELDS.each do |attribute|
-
       context 'with one student' do
         before { allow(subject).to receive(:students).and_return([student0]) }
 
@@ -327,23 +329,13 @@ RSpec.describe ApplicationDraft, type: :model do
         expect(application).to have_attributes(application_draft: application_draft)
       end
 
-      it 'updates the state to :applied and sends notification emails to orga and submitters' do
+      it 'updates the state to :applied and sends notification email to orga' do
         expect { submit_application }.to change { application_draft.state }.from('draft').to('applied')
 
         submitted_application = application_draft.reload.application
 
         expect(ActionMailer::DeliveryJob).to have_been_enqueued.with(
           'ApplicationFormMailer', 'new_application', 'deliver_now', submitted_application
-        )
-        expect(ActionMailer::DeliveryJob).to have_been_enqueued.with(
-          'ApplicationFormMailer', 'submitted', 'deliver_now',
-          application: submitted_application,
-          student:     students.first
-        )
-        expect(ActionMailer::DeliveryJob).to have_been_enqueued.with(
-          'ApplicationFormMailer', 'submitted', 'deliver_now',
-          application: submitted_application,
-          student:     students.second
         )
       end
     end

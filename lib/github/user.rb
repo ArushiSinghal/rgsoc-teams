@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'gh'
 
 module Github
@@ -20,12 +21,6 @@ module Github
         avatar_url: data['_links']['avatar']['href'],
         homepage:   data['_links']['blog'] && data['_links']['blog']['href']
       }
-    end
-
-    protected
-
-    def send_devise_notification(notification, *args)
-      devise_mailer.send(notification, self, *args).deliver_later
     end
 
     private

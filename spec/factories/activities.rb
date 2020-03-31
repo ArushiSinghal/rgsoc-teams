@@ -1,5 +1,4 @@
 FactoryBot.define do
-
   factory :activity do
     team
 
@@ -22,7 +21,5 @@ FactoryBot.define do
       title { FFaker::CheesyLingo.sentence }
       content { FFaker::CheesyLingo.paragraph }
     end
-
   end
-
 end

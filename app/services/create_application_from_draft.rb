@@ -7,7 +7,7 @@
 # the application was successful - or nil otherwise.
 class CreateApplicationFromDraft
   PROJECT_FIELDS = ApplicationDraft::PROJECT_FIELDS.map(&:to_s)
-  STUDENT_FIELDS = [0, 1].map { |index| User.columns.map(&:name).select{ |n| /\Aapplication_/ =~ n }.map{|n| "student#{index}_#{n}" } }.flatten
+  STUDENT_FIELDS = [0, 1].map { |index| User.columns.map(&:name).select { |n| /\Aapplication_/ =~ n }.map { |n| "student#{index}_#{n}" } }.flatten
 
   def initialize(application_draft)
     @application_draft = application_draft
@@ -38,8 +38,6 @@ class CreateApplicationFromDraft
       season: application_draft.season,
     }
   end
-
-  private
 
   def application_data
     {

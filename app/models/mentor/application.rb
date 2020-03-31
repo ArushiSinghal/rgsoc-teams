@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Mentor
   class Application
     include ActiveModel::Model
@@ -8,9 +9,11 @@ module Mentor
                   :project_id, :project_name,
                   :project_plan, :why_selected_project,
                   :signed_off_by,
-                  :student0, :student1,
                   :choice
-    attr_reader :signed_off_at, :mentor_fav
+    attr_reader :signed_off_at,
+                :mentor_fav,
+                :student0,
+                :student1
 
     def first_choice?
       choice == 1
@@ -85,7 +88,7 @@ module Mentor
     # @param attrs [Hash] arguments in wrong format
     # @return [Hash] arguments in correct format
     def studentize(attrs)
-      attrs.tap { |a| a.keys.each{ |k| a[k.sub(/student(0|1)_application_/, '')] = a.delete(k) } }
+      attrs.tap { |a| a.keys.each { |k| a[k.sub(/student(0|1)_application_/, '')] = a.delete(k) } }
     end
 
     def persisted_application
@@ -93,7 +96,6 @@ module Mentor
     end
 
     class << self
-
       # Retrieves Mentor specific representations of Applications matching the given criteria.
       #
       # @param projects [Project::ActiveRecord_Relation] list of possible Projects the Applications apply for
@@ -117,7 +119,7 @@ module Mentor
       def find(id:, projects:, season: Season.current)
         data = data_for(id: id, choice: 1, projects: projects, season: season) ||
                data_for(id: id, choice: 2, projects: projects, season: season) ||
-               fail(ActiveRecord::RecordNotFound)
+               raise(ActiveRecord::RecordNotFound)
         data.instance_eval(&mentorize)
       end
 

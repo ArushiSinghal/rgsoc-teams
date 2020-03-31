@@ -1,6 +1,38 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
+  describe '#user_for_comment' do
+    subject { helper.user_for_comment(comment) }
+
+    let(:user)    { create(:user, name: 'Alice') }
+    let(:comment) { create(:comment, user: user) }
+
+    before { allow(helper).to receive(:current_user) }
+
+    it { is_expected.to eq('Alice') }
+
+    context 'when the comment is by the current_user' do
+      before { allow(helper).to receive(:current_user).and_return(user) }
+
+      it { is_expected.to eq('You') }
+    end
+
+    context 'when the comment is by an admin' do
+      let(:user)       { create(:organizer, name: 'Eva') }
+      let(:with_label) { 'Eva <small><span class="label label-primary">RGSoC</span></small>' }
+
+      it { is_expected.to eq(with_label) }
+    end
+
+    context 'when the comment is by a currently logged in admin' do
+      let(:user) { create(:organizer, name: 'Eva') }
+
+      before { allow(helper).to receive(:current_user).and_return(user) }
+
+      it { is_expected.to eq('You') }
+    end
+  end
+
   describe '#application_disambiguation_link' do
     let(:draft) { create :application_draft }
     let(:user)  { create :user }
@@ -88,17 +120,20 @@ RSpec.describe ApplicationHelper, type: :helper do
   end
 
   describe '.link_to_user_roles' do
+    let(:team1)   { create(:team, name: '29-enim', project: project) }
+    let(:team2)   { create(:team, name: '28-enim') }
+    let(:user)    { create(:user, name: 'Trung Le') }
+    let(:project) { create(:project, name: 'Sinatra') }
+
     before do
-      @team  = create(:team, name: '29-enim', project_name: 'Sinatra')
-      @user1 = create(:user, name: 'Trung Le')
-      @role2 = create(:coach_role,  user: @user1, team: @team)
-      @role3 = create(:mentor_role, user: @user1, team: @team)
+      create(:coach_role,  user: user, team: team1)
+      create(:mentor_role, user: user, team: team2)
     end
 
     it 'should return link_to role based on student' do
-      expect(link_to_user_roles(@user1)).to eq(
-        "<a href=\"/community?role=coach\">Coach</a> at <a href=\"/teams/#{@team.id}\">Team 29-enim (Sinatra)</a>, " +
-        "<a href=\"/community?role=mentor\">Mentor</a> at <a href=\"/teams/#{@team.id}\">Team 29-enim (Sinatra)</a>"
+      expect(link_to_user_roles(user)).to eq(
+        "<a href=\"/community?role=coach\">Coach</a> at <a href=\"/teams/#{team1.id}\">Team 29-enim (Sinatra)</a>, " \
+        "<a href=\"/community?role=mentor\">Mentor</a> at <a href=\"/teams/#{team2.id}\">Team 28-enim</a>"
       )
     end
   end
@@ -137,28 +172,6 @@ RSpec.describe ApplicationHelper, type: :helper do
 
     it 'returns coach and mentor' do
       expect(role_names(@team, @user)).to eql 'Coach, Mentor'
-    end
-  end
-
-  describe '.time_for_user' do
-    let(:user) { create(:user, timezone: "Europe/Rome") }
-
-    before do
-      Timecop.travel(Time.utc(2013, 5, 2, "12:00"))
-    end
-
-    it 'returns the time based on a users timezone' do
-      expect(time_for_user(user)).to eq("02:00 PM")
-    end
-
-    it 'returns a dash when no timezone set' do
-      allow(user).to receive(:timezone).and_return(nil)
-      expect(time_for_user(user)).to eq("-")
-    end
-
-    it 'returns a dash when timezone is empty' do
-      allow(user).to receive(:timezone).and_return("")
-      expect(time_for_user(user)).to eq("-")
     end
   end
 end

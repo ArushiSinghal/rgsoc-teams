@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Organizers
   class TeamsController < Organizers::BaseController
     before_action :find_resource, only: [:show, :edit, :update, :destroy]
@@ -12,8 +13,13 @@ module Organizers
       else
         @teams = Team.order(:kind, :name)
       end
-      if params[:filter] != 'all'
-        @teams = Team.in_current_season.selected.ordered
+
+      if params[:filter] == 'full_time'
+        @teams = Team.in_current_season.full_time.ordered
+      elsif params[:filter] == 'part_time'
+        @teams = Team.in_current_season.part_time.ordered
+      else
+        @teams = Team.in_current_season.ordered
       end
     end
 
@@ -80,7 +86,7 @@ module Organizers
         :name, :twitter_handle, :github_handle, :description, :post_info, :event_id,
         :checked, :'starts_on(1i)', :'starts_on(2i)', :'starts_on(3i)',
         :'finishes_on(1i)', :'finishes_on(2i)', :'finishes_on(3i)', :invisible,
-        :project_name, :season_id, :kind,
+        :project_id, :season_id, :kind,
         conference_preference_attributes: [:id, :terms_of_ticket, :terms_of_travel, :first_conference_id, :second_conference_id, :lightning_talk, :comment, :_destroy],
         roles_attributes: [:id, :name, :github_handle, :_destroy],
         conference_attendances_attributes: [:id, :orga_comment, :conference_id, :_destroy],
@@ -94,7 +100,7 @@ module Organizers
 
     def set_breadcrumbs
       super
-      @breadcrumbs << [ 'Teams', :teams]
+      @breadcrumbs << ['Teams', :teams]
     end
   end
 end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class ApplicationDraft < ApplicationRecord
   include HasSeason
   include AASM
@@ -50,19 +51,19 @@ class ApplicationDraft < ApplicationRecord
     RGSoC\ Facebook
     RGSoC\ Newsletter
     RGSoC\ Organisers
-    ].freeze
+  ].freeze
 
   PARTNER_CHOICES = %w[
     Past\ RGSoC participants
     Another\ diversity\ initiative\ outreach
     Study\ group\ or\ Workshop
     Conference
-    ].freeze
+  ].freeze
 
   OTHER_CHOICES = %w[
     Friends
     Mass\ media
-    ].freeze
+  ].freeze
 
   ALL_CHOICES = DIRECT_OUTREACH_CHOICES + PARTNER_CHOICES + OTHER_CHOICES
 
@@ -78,10 +79,10 @@ class ApplicationDraft < ApplicationRecord
                      :project2_id, :plan_project2, :why_selected_project2]
 
   belongs_to :team
-  belongs_to :updater, class_name: 'User'
-  belongs_to :project1, class_name: 'Project'
-  belongs_to :project2, class_name: 'Project'
-  has_one    :application
+  belongs_to :updater, class_name: 'User', optional: true
+  belongs_to :project1, class_name: 'Project', optional: true
+  belongs_to :project2, class_name: 'Project', optional: true
+  has_one :application
 
   scope :in_current_season, -> { where(season: Season.current) }
 
@@ -133,14 +134,14 @@ class ApplicationDraft < ApplicationRecord
 
   def students
     if as_student?
-      [ current_student, current_pair ].compact
+      [current_student, current_pair].compact
     else
       (team || Team.new).students.order(:id)
     end.map { |user| Student.new(user) }
   end
 
   def current_student
-    @current_student ||= team.students.detect{ |student| student == current_user }
+    @current_student ||= team.students.detect { |student| student == current_user }
   end
 
   def current_pair
@@ -162,7 +163,7 @@ class ApplicationDraft < ApplicationRecord
     valid?(:apply)
   end
 
-  aasm column: :state, no_direct_assignment: true do
+  aasm column: :state do
     state :draft, initial: true
     state :applied
 
@@ -173,7 +174,10 @@ class ApplicationDraft < ApplicationRecord
       end
 
       after do
-        notify_orga_and_submitters
+        # TODO: There was an incident where students were sent the opposite
+        # info with their names on it. This will be off until we can figure out
+        # how this happened and how we can prevent it.
+        notify_orga
       end
 
       transitions from: :draft, to: :applied, guard: :ready?
@@ -205,7 +209,7 @@ class ApplicationDraft < ApplicationRecord
   end
 
   def students_confirmed?
-    unless team.present? && team.students.all?{|student| student.confirmed? }
+    unless team.present? && team.students.all? { |student| student.confirmed? }
       errors.add(:base, 'Please make sure every student confirmed the email address.')
     end
   end

@@ -1,93 +1,74 @@
 # frozen_string_literal: true
-class Team < ApplicationRecord
-  include ProfilesHelper, HasSeason
 
-  delegate :full_time?, to: :kind
-  delegate :part_time?, to: :kind
+class Team < ApplicationRecord
+  include HasSeason
+  include ProfilesHelper
 
   KINDS = %w(full_time part_time)
 
-  validates :name, presence: true, uniqueness: true
-  # validate :must_have_members
-  validate :disallow_multiple_student_roles
-  validate :disallow_duplicate_members
-  validate :limit_number_of_students
-  validate :limit_number_of_coaches
+  belongs_to :project, optional: true
 
-  attr_accessor :checked
+  has_one :last_activity, -> { order('id DESC') }, class_name: 'Activity'
+  has_one :conference_preference, dependent: :destroy
 
   has_many :applications, dependent: :nullify, inverse_of: :team
   has_many :application_drafts, dependent: :nullify
   has_many :roles, dependent: :destroy, inverse_of: :team
-  has_many :members, class_name: 'User', through: :roles, source: :user
+  has_many :members, through: :roles, source: :user
   Role::ROLES.each do |role|
-    has_many role.pluralize.to_sym, -> { where(roles: { name: role }) }, class_name: 'User', through: :roles, source: :user
+    has_many role.pluralize.to_sym, -> { where(roles: { name: role }) }, through: :roles, source: :user
   end
   has_many :sources, dependent: :destroy
   has_many :activities, dependent: :destroy
-  has_one :last_activity, -> { order('id DESC') }, class_name: 'Activity'
-  has_many :comments, as: :commentable
+  has_many :comments, as: :commentable, dependent: :destroy
   has_many :status_updates, -> { where(kind: 'status_update') }, class_name: 'Activity'
   has_many :conference_attendances, dependent: :destroy
-
-  has_one :conference_preference, dependent: :destroy
-  has_many :conferences, through: :conference_preference
-  belongs_to :project
 
   accepts_nested_attributes_for :conference_preference, allow_destroy: true
   accepts_nested_attributes_for :roles, :sources, allow_destroy: true
   accepts_nested_attributes_for :conference_attendances, allow_destroy: true, reject_if: proc { |attributes| attributes[:conference_id].blank? }
 
+  delegate :full_time?, to: :kind
+  delegate :part_time?, to: :kind
+
+  attr_accessor :checked
+
+  validates :name, presence: true, uniqueness: true
+  validate :disallow_multiple_student_roles
+  validate :disallow_duplicate_members
+  validate :limit_number_of_students
+  validate :limit_number_of_coaches
+
   before_create :set_number
   before_save :set_last_checked, if: :checked
 
-  scope :without_recent_log_update, -> {
-    where.not(id: Activity.where(kind: ['status_update', 'feed_entry']).where("created_at > ?", 26.hours.ago).pluck(:team_id))
-  }
-
-  scope :accepted, -> { where(kind: %w(full_time part_time)) }
-
-  scope :by_season, ->(year_or_season) do
-    case year_or_season
-    when Integer, String
-      joins(:season).where('seasons.name': year_or_season)
-    when Season
-      where(season: year_or_season)
-    else
-      none
-    end
-  end
+  scope :full_time, -> { where(kind: %w(full_time sponsored)) }
+  scope :part_time, -> { where(kind: %w(part_time voluntary)) }
+  scope :accepted, -> { full_time.or(part_time) }
+  scope :visible, -> { where.not(invisible: true).or(accepted) }
+  scope :in_current_season, -> { where(season: Season.current) }
+  scope :in_previous_season, -> { by_season(Date.today.year - 1) }
+  scope :by_season, ->(year) { joins(:season).where(seasons: { name: year }) }
+  scope :in_nearest_season, -> { in_current_season.presence || in_previous_season }
 
   class << self
     def ordered(sort = {})
       order([sort[:order] || 'kind, name', sort[:direction] || 'asc'].join(' '))
     end
 
-    def visible
-      where("teams.invisible IS NOT TRUE OR teams.kind IN (?)", KINDS)
-    end
-
     # Returns a base scope reflecting the relevant teams depending on what
     # phase of the running season we're currently in.
     def by_season_phase
       if Time.now.utc > Season.current.acceptance_notification_at
-        Team.in_current_season.selected
+        Team.in_current_season.accepted
       else
         Team.in_current_season.visible
       end
     end
-
-    def in_current_season
-      where(season: Season.current)
-    end
-
-    def selected
-      where(kind: %w(full_time part_time))
-    end
   end
 
   def application
-    @application ||= applications.where(season_id: Season.current.id).first
+    @application ||= applications.find_by(season_id: Season.current.id)
   end
 
   # TeamPerformance for Supervisor's Dashboard
@@ -107,8 +88,9 @@ class Team < ApplicationRecord
     super.to_s.inquiry
   end
 
+  # TODO: refactor me...
   def display_name
-    chunks = [name, project_name].select(&:present?)
+    chunks = [name, project&.name].select(&:present?)
     chunks[1] = "(#{chunks[1]})" if chunks[1]
     chunks << "[#{season.name}]" if season && season != Season.current
 
@@ -195,12 +177,12 @@ class Team < ApplicationRecord
   end
 
   def limit_number_of_coaches
-    return unless members_with_role('coach').size > 4
+    return unless members_with_role('coach').size > 5
     errors.add(:roles, :too_many_coaches)
   end
 
   def members_with_role(role)
-    roles.select{|r| r.name == role && !r.marked_for_destruction?}
+    roles.select { |r| r.name == role && !r.marked_for_destruction? }
   end
 
   def two_students_present?

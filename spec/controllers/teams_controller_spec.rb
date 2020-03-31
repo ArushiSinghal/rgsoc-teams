@@ -12,15 +12,15 @@ RSpec.describe TeamsController, type: :controller do
 
   let(:valid_attributes) { build(:team).attributes.merge(roles_attributes: [{ name: 'coach', github_handle: 'tobias' }]) }
 
-  before do
-    user.roles.create(name: 'student', team: team)
-  end
-
   describe "GET index" do
+    before do
+      user.roles.create(name: 'student', team: team)
+    end
+
     context 'before acceptance letters are sent' do
       let(:last_season)      { Season.create name: Date.today.year - 1 }
       let!(:invisble_team)   { create :team, :in_current_season, kind: nil, invisible: true }
-      let!(:unaccepted_team) { create :team, :in_current_season, kind: nil}
+      let!(:unaccepted_team) { create :team, :in_current_season, kind: nil }
       let!(:last_years_team) { create :team, kind: 'part_time', season: last_season }
 
       before do
@@ -31,7 +31,6 @@ RSpec.describe TeamsController, type: :controller do
         get :index
         expect(assigns(:teams)).to match_array [unaccepted_team]
       end
-
     end
 
     context 'with sorting' do
@@ -43,7 +42,7 @@ RSpec.describe TeamsController, type: :controller do
 
     context 'past teams' do
       it 'return index by season year' do
-        get :index, params: { year: '2016'}
+        get :index, params: { year: '2016' }
         expect(response).to render_template 'index'
       end
 
@@ -62,7 +61,7 @@ RSpec.describe TeamsController, type: :controller do
     context 'after acceptance letters have been sent' do
       let(:last_season) { Season.create name: Date.today.year - 1 }
       let!(:full_time_team) { create :team, :in_current_season, kind: 'full_time' }
-      let!(:unaccepted_team) { create :team, :in_current_season, kind: nil}
+      let!(:unaccepted_team) { create :team, :in_current_season, kind: nil }
       let!(:last_years_team) { create :team, kind: 'full_time', season: last_season }
 
       before do
@@ -71,10 +70,9 @@ RSpec.describe TeamsController, type: :controller do
 
       it 'only displays this season\'s accepted teams' do
         get :index
-        expect(response).to be_success
+        expect(response).to have_http_status(:success)
         expect(assigns(:teams)).to match_array [full_time_team]
       end
-
     end
   end
 
@@ -89,7 +87,7 @@ RSpec.describe TeamsController, type: :controller do
 
     it 'lists the team conference preferences' do
       get :show, params: { id: team.id }
-      expect(response).to be_success
+      expect(response).to have_http_status(:success)
       expect(response.body).to match preference.first_conference.name
       expect(response.body).to match preference.second_conference.name
     end
@@ -103,13 +101,17 @@ RSpec.describe TeamsController, type: :controller do
   end
 
   describe "GET edit" do
+    before do
+      user.roles.create(name: 'student', team: team)
+    end
+
     context "their own team" do
       let(:team) { create(:team) }
 
       it "assigns the requested team as @team" do
         get :edit, params: { id: team.to_param }
         expect(assigns(:team)).to eq(team)
-        expect(response).to be_success
+        expect(response).to have_http_status(:success)
       end
     end
 
@@ -165,7 +167,10 @@ RSpec.describe TeamsController, type: :controller do
   end
 
   describe "PATCH update" do
-    before { sign_in user }
+    before do
+      sign_in user
+      user.roles.create(name: 'student', team: team)
+    end
 
     context "their own team" do
       let(:team) { create(:team) }
@@ -190,7 +195,7 @@ RSpec.describe TeamsController, type: :controller do
           let(:github_handle) { valid_attributes[:roles_attributes].first[:github_handle] }
 
           let(:randomize_case) do
-            ->(string) do
+            lambda do |string|
               string.each_char.inject('') { |str, c| str << c.send([:downcase, :upcase][rand(2)]) }
             end
           end
@@ -204,7 +209,7 @@ RSpec.describe TeamsController, type: :controller do
           end
 
           it 'finds an existing user by case-insensitive github_handle' do
-            existing_user = create :user, github_handle: randomize_case.(github_handle)
+            existing_user = create :user, github_handle: randomize_case.call(github_handle)
             expect {
               patch :update, params: { id: team.to_param, team: valid_attributes }
             }.not_to change { User.count }
@@ -214,8 +219,8 @@ RSpec.describe TeamsController, type: :controller do
         end
 
         context 'selecting the conference options' do
-          let(:conference_1) { create(:conference, :in_current_season)}
-          let(:conference_2) { create(:conference, :in_current_season)}
+          let(:conference_1) { create(:conference, :in_current_season) }
+          let(:conference_2) { create(:conference, :in_current_season) }
           let(:team_params) do
             build(:team).attributes.merge(conference_preference_attributes: {
               first_conference_id: conference_1.id,
@@ -267,7 +272,10 @@ RSpec.describe TeamsController, type: :controller do
   end
 
   describe "DELETE destroy" do
-    before { sign_in user }
+    before do
+      sign_in user
+      user.roles.create(name: 'student', team: team)
+    end
 
     context "their own team" do
       let(:params) { { id: team.to_param } }

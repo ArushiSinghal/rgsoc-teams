@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Organizers::TeamsController, type: :controller do
   render_views
@@ -19,15 +19,21 @@ RSpec.describe Organizers::TeamsController, type: :controller do
 
     describe 'GET index' do
       let!(:full_time_team) { create :team, :in_current_season, kind: 'full_time' }
+      let!(:part_time_team) { create :team, :in_current_season, kind: 'part_time' }
 
-      it 'assigns only selected teams as @teams' do
+      it 'assigns all teams as @teams' do
         get :index
-        expect(assigns(:teams)).to match_array [full_time_team]
+        expect(assigns(:teams)).to match_array [full_time_team, part_time_team, team]
       end
 
-      it 'assigns all teams as @teams when requested' do
-        get :index, params: { filter: 'all' }
-        expect(assigns(:teams)).to match_array [full_time_team, team]
+      it 'assigns part_time teams as @teams when requested' do
+        get :index, params: { filter: 'part_time' }
+        expect(assigns(:teams)).to match_array [part_time_team]
+      end
+
+      it 'assigns full_time teams as @teams when requested' do
+        get :index, params: { filter: 'full_time' }
+        expect(assigns(:teams)).to match_array [full_time_team]
       end
     end
 
@@ -110,24 +116,32 @@ RSpec.describe Organizers::TeamsController, type: :controller do
       end
     end
 
-    describe "PATCH update" do
-      before { sign_in user}
+    describe 'PATCH update' do
+      subject(:request) { patch(:update, params: params) }
 
-      context "assign conference attendance" do
-        let(:offer) { create(:conference_attendance) }
-        let(:team) { offer.team }
-        let!(:team_params) do
-          build(:team).attributes.merge(conference_attendances_attributes: {
-            '0' => {
-              conference_id: offer.conference.id, orga_comment: "commment"
+      before { sign_in user }
+
+      context 'when assigning conference attendances' do
+        let(:conference)            { create(:conference) }
+        let(:team)                  { create(:team) }
+        let(:params)                { { id: team.id, team: team_params } }
+        let(:conference_attendance) { ConferenceAttendance.last }
+        let(:orga_comment)          { 'Some ideas about how and why' }
+        let(:team_params) do
+          {
+            conference_attendances_attributes: {
+              '0' => { conference_id: conference.id, orga_comment: orga_comment }
             }
-          })
+          }
         end
 
-        it 'orga members can assign conference offer for a team' do
-          expect {
-              patch :update, params: { id: team.id, team: team_params }
-            }.to change { team.conference_attendances.count }.by 1
+        it 'adds creates a new conference attendance for the team' do
+          expect { request }.to change(ConferenceAttendance, :count).by(1)
+          expect(conference_attendance).to have_attributes(
+            team:         team,
+            conference:   conference,
+            orga_comment: orga_comment
+          )
         end
       end
     end
@@ -145,7 +159,6 @@ RSpec.describe Organizers::TeamsController, type: :controller do
           expect(response).to redirect_to organizers_teams_url
         end
       end
-
     end
   end
 end

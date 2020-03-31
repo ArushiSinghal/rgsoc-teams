@@ -1,26 +1,22 @@
 # frozen_string_literal: true
+
 class Application < ApplicationRecord
-  include HasSeason, Rateable
+  include Rateable
+  include HasSeason
 
   PROJECT_VISIBILITY_WEIGHT = ENV['PROJECT_VISIBILITY_WEIGHT'] || 2
   COACHING_COMPANY_WEIGHT = ENV['COACHING_COMPANY_WEIGHT'] || 2
   MENTOR_PICK_WEIGHT = ENV['MENTOR_PICK_WEIGHT'] || 2
-  FLAGS = [:remote_team,
-          :volunteering_team,
-          :selected,
-          :male_gender,
-          :zero_community,
-          :age_below_18,
-          :less_than_two_coaches,
-          :less_than_40_hours_a_week]
 
   belongs_to :application_draft
   belongs_to :team, inverse_of: :applications, counter_cache: true
-  belongs_to :project
+  belongs_to :project, optional: true
 
   has_many :comments, -> { order(:created_at) }, as: :commentable, dependent: :destroy
 
-  validates :team, :application_data, presence: true
+  validates :application_data, presence: true
+
+  before_validation :remove_duplicate_flags
 
   scope :hidden, -> { where('applications.hidden IS NOT NULL and applications.hidden = ?', true) }
   scope :visible, -> { where('applications.hidden IS NULL or applications.hidden = ?', false) }
@@ -54,7 +50,7 @@ class Application < ApplicationRecord
   end
 
   def country
-    @country ||= super.present? ? super : (team || Team.new).students.map(&:country).reject(&:blank?).join(', ')
+    @country ||= super.presence || (team || Team.new).students.map(&:country).reject(&:blank?).join(', ')
   end
 
   def location
@@ -65,7 +61,7 @@ class Application < ApplicationRecord
     data.minimum_money
   end
 
-  FLAGS.each do |flag|
+  Selection::Table::FLAGS.each do |flag|
     define_method(flag) { flags.include?(flag.to_s) }
     alias_method :"#{flag}?", flag
 
@@ -81,5 +77,11 @@ class Application < ApplicationRecord
 
   def project2
     Project.find_by(id: application_data['project2_id'])
+  end
+
+  private
+
+  def remove_duplicate_flags
+    flags.uniq!
   end
 end

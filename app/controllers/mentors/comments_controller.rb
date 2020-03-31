@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module Mentors
   class CommentsController < Mentors::BaseController
     def create
@@ -7,8 +8,8 @@ module Mentors
     end
 
     def update
-      comment = mentor_comments.update(params[:id], update_params)
-      redirect_to path_for(comment)
+      mentor_comment.update(update_params)
+      redirect_to path_for(mentor_comment)
     end
 
     private
@@ -25,11 +26,11 @@ module Mentors
 
     def path_for(comment)
       anchor = ActionView::RecordIdentifier.dom_id(comment)
-      mentors_application_path( id: comment.commentable_id, anchor: anchor)
+      mentors_application_path(id: comment.commentable_id, anchor: anchor)
     end
 
-    def mentor_comments
-      Mentor::Comment.where(user: current_user)
+    def mentor_comment
+      Mentor::Comment.find_by!(id: params[:id], user: current_user)
     end
   end
 end

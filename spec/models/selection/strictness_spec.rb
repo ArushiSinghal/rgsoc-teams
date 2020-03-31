@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Selection::Strictness, type: :model do
   describe '#adjusted_points_for_applications' do
@@ -47,7 +47,7 @@ RSpec.describe Selection::Strictness, type: :model do
       # We still want to stub Rating#points, but we need different
       # valus. Return `a` for the first rating, `b` else.
       let(:points) do
-        ->(rating) {
+        lambda { |rating|
           case rating
           when rating1 then 2.0 # reviewer1 for application1
           when rating2 then 6.0 # reviewer1 for application2
@@ -76,7 +76,5 @@ RSpec.describe Selection::Strictness, type: :model do
         expect(untainted_arithmetic_mean_for_application2).to be < subject[application2.id]
       end
     end
-
   end
-
 end

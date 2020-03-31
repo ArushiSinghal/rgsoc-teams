@@ -2,71 +2,75 @@ source 'https://rubygems.org'
 
 ruby File.read(".ruby-version")
 
-gem 'rails', '~> 5.1.5'
 gem 'pg'
 gem 'puma'
-gem 'devise', '~> 4.4.0'
-gem 'omniauth-github'
-gem 'cancancan'
-gem 'redcarpet'
-gem 'simple_form'
-gem 'nested_form'
-gem 'gh'
-gem 'feedjira'
-gem 'kaminari'
-gem 'bootstrap-kaminari-views'
-gem 'sucker_punch'
-gem 'country_select'
-gem 'rails_autolink'
-gem 'slim-rails'
-gem 'jquery-rails'
-gem 'jquery-ui-rails'
-gem 'bootstrap-sass'
-gem 'font-awesome-sass'
-gem 'pretender'
-
-gem 'sass-rails'
-gem 'uglifier'
-gem 'sprockets-rails'
-
-gem 'newrelic_rpm'
-gem 'aws-sdk', '~> 2.10'
-
-gem 'sentry-raven'
+gem 'rails', '~> 5.2.3'
 
 gem 'aasm'
+gem 'aws-sdk', '~> 2.10'
+gem 'bootsnap', require: false
+gem 'bootstrap-kaminari-views'
 gem 'camo'
+gem 'cancancan'
+gem 'country_select'
+gem 'devise'
+gem 'feedjira'
+gem 'gh'
+gem 'kaminari'
+gem 'nested_form'
+gem 'omniauth-github'
+gem 'pretender'
+gem 'rails_autolink'
+gem 'redcarpet'
+gem 'simple_form'
+gem 'slim-rails'
+gem 'sucker_punch'
+
+gem 'bootstrap-sass'
+gem 'font-awesome-sass', '~> 4.7'
+gem 'jquery-rails'
+gem 'jquery-ui-rails'
+gem 'sass-rails'
+gem 'sprockets-rails'
+gem 'uglifier'
+
+gem 'newrelic_rpm'
+gem 'sentry-raven'
 
 group :production do
   gem 'rails_12factor'
 end
 
 group :development, :test do
-  gem 'pry'
-  gem 'rspec-rails'
-  gem 'factory_bot_rails'
   gem 'database_cleaner'
-  gem 'byebug', require: !ENV['RM_INFO'] # require parameter is workaround for RubyMine with Rails ~> 4.1
+  gem 'factory_bot_rails'
   gem 'ffaker'
+  gem 'rspec-rails'
+
+  gem 'pry-byebug'
+  gem 'pry-doc'
+  gem 'pry-rails'
 end
 
 group :development do
   gem 'better_errors'
   gem 'binding_of_caller'
-  gem 'spring'
-  gem 'spring-commands-rspec'
-  gem 'foreman'
+  gem 'letter_opener' # preview mail in browser instead of sending
 end
 
 group :test do
+  gem 'capybara', '~> 2.18'
+  gem 'capybara-screenshot'
   gem 'rails-controller-testing'
-  gem 'shoulda-matchers'
-  gem 'webmock'
-  gem 'coveralls', require: false
-  gem 'timecop'
-  gem 'codeclimate-test-reporter', require: false
+  gem 'rspec-activemodel-mocks'
   gem 'rspec-collection_matchers'
   gem 'rspec-html-matchers'
-  gem 'rspec-activemodel-mocks'
+  gem 'selenium-webdriver'
+  gem 'shoulda-matchers', git: 'https://github.com/thoughtbot/shoulda-matchers.git'
+  gem 'simplecov', require: false
+  gem 'timecop'
+  gem 'webmock'
+
   gem 'rubocop', require: false
+  gem 'rubocop-rspec', require: false
 end

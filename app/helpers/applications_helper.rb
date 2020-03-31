@@ -1,12 +1,8 @@
 # frozen_string_literal: true
+
 module ApplicationsHelper
   def show_or_na(value)
     value.presence || 'n/a'
-  end
-
-  def heart_or_na(value)
-    return 'n/a' unless value.to_s == 'true'
-    icon('heart', class: 'strong').html_safe
   end
 
   def heart_or_na(value)
@@ -25,7 +21,7 @@ module ApplicationsHelper
   end
 
   def format_application_flags(application)
-    flags = Application::FLAGS.select do |flag|
+    flags = Selection::Table::FLAGS.select do |flag|
       application.send(:"#{flag}?")
     end
     flags.map { |flag| flag.to_s.titleize }.join(', ')

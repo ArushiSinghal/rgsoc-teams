@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'rails_helper'
 
 RSpec.describe Mentor::Application, type: :model do
   describe 'attributes' do
@@ -128,6 +128,7 @@ RSpec.describe Mentor::Application, type: :model do
         expect(subject.student0).to have_attributes(
           coding_level:     application.data.student0_application_coding_level.to_i,
           code_samples:     application.data.student0_application_code_samples,
+          name:             application.data.student0_application_name,
           learning_history: application.data.student0_application_learning_history,
           language_learning_period: application.data.student0_application_language_learning_period,
           skills:           application.data.student0_application_skills
@@ -138,6 +139,7 @@ RSpec.describe Mentor::Application, type: :model do
         expect(subject.student1).to have_attributes(
           coding_level:     application.data.student1_application_coding_level.to_i,
           code_samples:     application.data.student1_application_code_samples,
+          name:             application.data.student1_application_name,
           learning_history: application.data.student1_application_learning_history,
           language_learning_period: application.data.student1_application_language_learning_period,
           skills:           application.data.student1_application_skills
@@ -180,7 +182,8 @@ RSpec.describe Mentor::Application, type: :model do
   end
 
   describe '#find_or_initialize_comment_by(mentor)' do
-    let(:mentor_application) { described_class.new(id: 1) }
+    let!(:application)       { create(:application) }
+    let(:mentor_application) { described_class.new(id: application.id) }
     let(:mentor)             { create(:mentor) }
 
     subject { mentor_application.find_or_initialize_comment_by(mentor) }

@@ -1,19 +1,22 @@
 # frozen_string_literal: true
+
 require 'github/user'
 
 class User < ApplicationRecord
+  include EmailPreferences
+
   TSHIRT_SIZES = %w(XXS XS S M L XL 2XL 3XL)
   TSHIRT_CUTS = %w(Straight Fitted)
   URL_PREFIX_PATTERN = /\A(http|https).*\z/i
 
   ORDERS = {
-    name:           "LOWER(users.name)",
-    team:           "teams.name",
-    github:         "users.github_handle",
-    irc:            "COALESCE(users.irc_handle, '')",
-    location:       "users.location",
-    interested_in:  "users.interested_in",
-    country:        "users.country",
+    name:          'LOWER(users.name)',
+    team:          'teams.name',
+    github:        'users.github_handle',
+    irc:           'COALESCE(users.irc_handle, '')',
+    location:      'users.location',
+    interested_in: 'users.interested_in',
+    country:       'users.country',
   }
 
   INTERESTS = {
@@ -62,6 +65,7 @@ class User < ApplicationRecord
   has_many :application_drafts, through: :teams
   has_many :applications, through: :teams
   has_many :todos, dependent: :destroy
+  has_many :comments, dependent: :destroy
 
   validates :github_handle, presence: true, uniqueness: { case_sensitive: false }
   validates :homepage, format: { with: URL_PREFIX_PATTERN }, allow_blank: true
@@ -71,8 +75,8 @@ class User < ApplicationRecord
 
   accepts_nested_attributes_for :roles, allow_destroy: true
 
+  before_create :complete_from_github
   before_save :normalize_location
-  after_create :complete_from_github
 
   # This field is used to skip validations when creating
   # a preliminary user, e.g. when adding a non existant person
@@ -96,7 +100,7 @@ class User < ApplicationRecord
         order = ORDERS.fetch(:name)
       end
 
-      scope = order("#{order} #{direction}").references(:teams)
+      scope = order(Arel.sql("#{order} #{direction}")).references(:teams)
       scope = scope.joins(:teams).references(:teams) if order == :team
       scope
     end
@@ -129,6 +133,13 @@ class User < ApplicationRecord
     def immutable_attributes
       [:github_handle]
     end
+
+    def search(search)
+      return all if search.nil?
+      q_user_names = User.where("users.name ILIKE ?", "%#{search}%")
+      q_team_names = User.with_teams.where("teams.name ILIKE ?", "%#{search}%")
+      (q_user_names + q_team_names).uniq
+    end
   end # class << self
 
   def rating(type = :mean, options = {})
@@ -152,7 +163,11 @@ class User < ApplicationRecord
   end
 
   def project_maintainer?
-    Project.accepted.where(submitter: self).any?
+    Maintainership
+      .where(user: self)
+      .joins(:project)
+      .merge(Project.accepted)
+      .any?
   end
 
   def reviewer?
@@ -168,15 +183,10 @@ class User < ApplicationRecord
   end
 
   def current_student?
-    roles.joins(:team).
-      where("teams.season_id" => Season.current.id, "teams.kind" => %w(full_time part_time)).
-      student.any?
-  end
-
-  def self.search(search)
-    q_user_names = User.where("users.name ILIKE ?", "%#{search}%")
-    q_team_names = User.with_teams.where("teams.name ILIKE ?", "%#{search}%")
-    (q_user_names + q_team_names).uniq
+    roles.joins(:team)
+      .merge(Team.in_current_season)
+      .merge(Team.accepted)
+      .student.any?
   end
 
   def interested_in_list
@@ -199,6 +209,12 @@ class User < ApplicationRecord
     self.tech_interest = tech_interest_list.split(',').map(&:strip).reject(&:blank?)
   end
 
+  protected
+
+  def send_devise_notification(notification, *args)
+    devise_mailer.send(notification, self, *args).deliver_later
+  end
+
   private
 
   # normalization to prevent duplication, NULL for sorting
@@ -207,10 +223,14 @@ class User < ApplicationRecord
   end
 
   def complete_from_github
-    attrs = Github::User.new(github_handle).attrs rescue {}
+    attrs = begin
+              Github::User.new(github_handle).attrs
+            rescue StandardError
+              {}
+            end
     attrs[:name] = github_handle if attrs[:name].blank?
     attrs = attrs.select { |key, value| send(key).blank? && value.present? }
-    update_attributes attrs
+    assign_attributes(attrs)
     @just_created = true
   end
 
@@ -218,5 +238,4 @@ class User < ApplicationRecord
     return if new_record?
     errors.add(:github_handle, "can't be changed") if changes_include?(:github_handle)
   end
-
 end

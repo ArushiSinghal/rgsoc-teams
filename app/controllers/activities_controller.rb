@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class ActivitiesController < ApplicationController
   before_action :normalize_params, only: :index
   before_action :cors_preflight, only: :index
@@ -28,7 +29,7 @@ class ActivitiesController < ApplicationController
   end
 
   def teams
-    Team.in_current_season.selected.order(:name)
+    @teams ||= Team.accepted.in_nearest_season.order(:name)
   end
   helper_method :teams
 

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
-class UsersController < ApplicationController
-  before_action :set_user, only: [:show, :edit, :update, :destroy, :impersonate]
 
-  load_and_authorize_resource except: [:index, :show, :impersonate, :stop_impersonating]
+class UsersController < ApplicationController
+  load_and_authorize_resource except: [:impersonate, :stop_impersonating]
 
   def show
   end
@@ -39,7 +38,7 @@ class UsersController < ApplicationController
         if !@user.confirmed? && !@user.previous_changes["unconfirmed_email"].present?
           @user.send_confirmation_instructions
         else
-          notice = 'User was successfully updated.'
+          notice = 'Your profile was successfully updated.'
         end
         format.html { redirect_to params[:redirect_to].presence || @user, notice: notice }
         format.json { head :no_content }
@@ -60,8 +59,9 @@ class UsersController < ApplicationController
   end
 
   def impersonate
+    set_user
     impersonate_user(@user)
-    redirect_to community_path, notice: "Now impersonating #{@user.name}."
+    redirect_to community_path, notice: "Now impersonating #{@user.name}. You can find the link to stop impersonation on the user menu."
   end
 
   def stop_impersonating
@@ -87,7 +87,7 @@ class UsersController < ApplicationController
 
   def teams
     all_teams = Team.all.order(:name)
-    selected_teams = Team.in_current_season.selected.order(:name)
+    selected_teams = Team.in_current_season.accepted.order(:name)
     current_season.active? ? selected_teams : all_teams
   end
   helper_method :teams
@@ -103,6 +103,7 @@ class UsersController < ApplicationController
       :is_company, :company_name, :company_info,
       :application_about, :application_motivation, :application_gender_identification, :application_age,
       :application_coding_level, :application_community_engagement, :application_language_learning_period,
+      *EmailPreferences::ATTRIBUTES,
       :application_learning_history, :application_skills, :application_code_samples,
       :application_location, :application_minimum_money, :application_money, :application_goals, :application_code_background,
       interested_in: [],

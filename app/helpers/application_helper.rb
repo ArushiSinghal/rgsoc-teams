@@ -1,9 +1,9 @@
 # frozen_string_literal: true
+
 require 'cgi'
 require 'uri'
 module ApplicationHelper
-
-  TIMEZONES = ActiveSupport::TimeZone.all.map{|t| t.tzinfo.name}.uniq.sort
+  TIMEZONES = ActiveSupport::TimeZone.all.map { |t| t.tzinfo.name }.uniq.sort
 
   def application_disambiguation_link
     if current_user && current_user.application_drafts.in_current_season.any?
@@ -48,7 +48,7 @@ module ApplicationHelper
     content = activity.content
     content = render_markdown(content) if activity.kind == 'mailing'
     content = strip_tags(content || '')
-    content = CGI::unescapeHTML(content)
+    content = CGI.unescapeHTML(content)
     content = sanitize(content, tags: [])
     content = truncate(content, options.merge(omission: '', separator: ' ')) { read_more.html_safe }
     content
@@ -130,8 +130,8 @@ module ApplicationHelper
 
   def status_for(team, member, role_name)
     if role_name == :coach
-      role = team.roles.find { |role| role.user == member}
-      if role && role.confirmed?
+      role = team.roles.find { |role| role.user == member }
+      if role&.confirmed?
         content_tag :span, 'Confirmed', class: 'label label-default'
       elsif current_user == member
         link_to 'Confirm', confirm_role_path((role.confirmation_token || 'confirmation-token-missing')), method: :put, class: 'btn btn-sm btn-success'
@@ -163,7 +163,7 @@ module ApplicationHelper
   end
 
   def role_names(team, user)
-    team.roles.reload.select{|role| role.user == user}.map do |role|
+    team.roles.reload.select { |role| role.user == user }.map do |role|
       role.name.titleize
     end.join(', ').html_safe
   end
@@ -171,31 +171,19 @@ module ApplicationHelper
   # stolen from: http://railscasts.com/episodes/228-sortable-table-columns?view=asciicast
   def sortable(column, title = nil)
     title ||= column.to_s.titleize
-    direction = (column.to_s == params[:sort] && params[:direction] == 'asc') ? 'desc' : 'asc'
+    direction = column.to_s == params[:sort] && params[:direction] == 'asc' ? 'desc' : 'asc'
     link_to title, params.except('action', 'controller').permit!.merge(sort: column, direction: direction)
   end
 
   def user_for_comment(comment)
-    if comment.user.nil?
-      "Deleted user"
-    elsif comment.user == current_user
-      "You"
+    if comment.user == current_user
+      'You'
     elsif comment.user.admin?
-      comment.user.name + " " + content_tag(:small) do
+      comment.user.name + ' ' + content_tag(:small) do
         content_tag(:span, 'RGSoC', class: 'label label-primary')
       end
     else
       comment.user.name
-    end
-  end
-
-  def time_for_user(user)
-    if !user.timezone.blank?
-      Time.use_zone(user.timezone) do
-        localize(Time.zone.now, format: '%I:%M %p')
-      end
-    else
-      '-'
     end
   end
 
